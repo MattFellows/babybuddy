@@ -47,11 +47,13 @@ def validate_unique_period(queryset, model):
     """
     if model.id:
         queryset = queryset.exclude(id=model.id)
+    """
     if model.start and model.end:
         if queryset.filter(start__lte=model.end, end__gte=model.start):
             raise ValidationError(
                 'Another entry intersects the specified time period.',
                 code='period_intersection')
+    """
 
 
 def validate_time(time, field_name):
