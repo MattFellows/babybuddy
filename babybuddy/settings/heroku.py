@@ -3,7 +3,7 @@ import dj_database_url
 from .base import *
 
 
-BABY_BUDDY['ALLOW_UPLOADS'] = os.environ.get('ALLOW_UPLOADS', False)
+BABY_BUDDY['ALLOW_UPLOADS'] = os.environ.get('ALLOW_UPLOADS', True)
 
 
 # Database
@@ -30,3 +30,9 @@ if SENDGRID_USERNAME and SENDGRID_PASSWORD:
     EMAIL_TIMEOUT = 60
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+AWS_ACCESS_KEY_ID = 'AKIAJXAZYJ6YMJNLBEVA'
+AWS_SECRET_ACCESS_KEY = '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'
+AWS_STORAGE_BUCKET_NAME = 'baby-buddy'
+
+DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
