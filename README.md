@@ -21,7 +21,6 @@ work.
 - [Deployment](#deployment)
   - [AWS Elastic Beanstalk](#aws-elastic-beanstalk)
   - [Docker](#docker)
-  - [Nanobox](#nanobox)
   - [Heroku](#heroku)
   - [Manual](#manual)
 - [Configuration](#configuration)
@@ -33,6 +32,7 @@ work.
 - [Development](#development)
   - [Installation](#installation)
   - [Gulp Commands](#gulp-commands)
+  - [Pre-commit Hook](#pre-commit-hook)
 
 ## Demo
 
@@ -82,11 +82,9 @@ redeploy the app (e.g. if there are errors or settings are changed).
 
 ### Docker
 
-A Docker deploy requires [Docker](http://docker.com/) and
+A Docker deployment requires [Docker](http://docker.com/) and
 [Docker Compose](https://docs.docker.com/compose/overview/) to create two
-containers - one for the database and one for the application. Baby Buddy uses a
-[multi-stage build](https://docs.docker.com/engine/userguide/eng-image/multistage-build/),
-which requires Docker version 17.05 or newer.
+containers - one for the database and one for the application.
 
 1. Copy the `docker.env.example` to `docker.env` and set the `ALLOWED_HOSTS` and
 `SECRET_KEY` variables within
@@ -105,82 +103,46 @@ which requires Docker version 17.05 or newer.
 
         docker-compose exec app python manage.py migrate
 
-1. Initialize static assets *(first run/after updates)*
-
-        docker-compose exec app python manage.py collectstatic
-
 The app should now be locally available at
 [http://127.0.0.1:8000](http://127.0.0.1:8000). See
 [Get Started, Part 6: Deploy your app](https://docs.docker.com/get-started/part6/)
 for detailed information about how to deployment methods with Docker.
-
-### Nanobox
-
-An example [Nanobox](https://nanobox.io/) configuration, `boxfile.yml`, is
-provided with Baby Buddy. The steps below are a rough guide to deployment. See
-[Create and Deploy a Custom Django App](https://guides.nanobox.io/python/django/)
-for detailed information about Nanobox's deployment and configuration process.
-
-1. Clone/download the Baby Buddy repo
-
-        git clone https://github.com/cdubz/babybuddy.git
-
-1. Enter the cloned/downloaded directory
-
-        cd babybuddy
-
-1. Add the `SECRET_KEY` and `DJANGO_SETTINGS_MODULE` environment variables
-
-        nanobox evar add DJANGO_SETTINGS_MODULE=babybuddy.settings.nanobox
-        nanobox evar add SECRET_KEY=<CHANGE TO SOMETHING RANDOM>
-
-    *See [Configuration](#configuration) for other settings that can be
-    controlled by environment variables.*
-
-1. Deploy! :rocket:
-
-        nanobox deploy
 
 ### Heroku
 
 [![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
 
 For manual deployments to Heroku without using the deploy button, make sure to
-create two settings before pushing using `heroku config:set`:
+create the following settings before pushing:
 
     heroku config:set DJANGO_SETTINGS_MODULE=babybuddy.settings.heroku
     heroku config:set SECRET_KEY=<CHANGE TO SOMETHING RANDOM>
+    heroku config:set DISABLE_COLLECTSTATIC=1
 
 See [Configuration](#configuration) for other settings that can be controlled
 by `heroku config:set`.
 
 ### Manual
 
-There are a number of ways to deploy Baby Buddy manually to any server/VPS.
-The application can run fine in low memory (below 1GB) situations, however a
-32-bit operating system is recommended in such cases. This is primarily
-because the build process can be memory intensive and cause excessive memory
-usage on 64-bit systems. If all fails, assets can be built on a local machine
-and then uploaded to a server.
+There are many ways to deploy Baby Buddy manually to any server/VPS. The basic 
+requirements are Python, a web server, an application server, and a database.
 
 #### Requirements
 
-- Python 3.4+, pip, pipenv
+- Python 3.5+, pip, pipenv
 - Web server ([nginx](http://nginx.org/), [Apache](http://httpd.apache.org/), etc.)
 - Application server ([uwsgi](http://projects.unbit.it/uwsgi), [gunicorn](http://gunicorn.org/), etc.)
 - Database ([sqlite](https://sqlite.org/), [Postgres](https://www.postgresql.org/), [MySQL](https://www.mysql.com/), etc.)
-- NodeJS 8.x and NPM 5.x (for building assets)
-- Gulp (for building assets)
 
 #### Example deployment
 
-*This example assumes a 512MB VPS instance with Ubuntu 16.04 **x32**.* It uses
-Python 3.x, nginx, uwsgi and sqlite and should be sufficient for a few users
+*This example assumes a 512MB VPS instance with Ubuntu 16.04.* It uses
+Python 3.5+, nginx, uwsgi and sqlite and should be sufficient for a few users
 (e.g. two parents and 1+ child).
 
-1. Install Python 3.x, pip, nginx and uwsgi
+1. Install system packages
 
-        sudo apt-get install python3 python3-pip nginx uwsgi uwsgi-plugin-python3 git
+        sudo apt-get install python3 python3-pip nginx uwsgi uwsgi-plugin-python3 git libopenjp2-7-dev
 
 1. Default python3 to python for this session
 
@@ -189,12 +151,6 @@ Python 3.x, nginx, uwsgi and sqlite and should be sufficient for a few users
 1. Install pipenv
 
         sudo -H pip3 install pipenv
-
-1. Install NodeJS, NPM and Gulp
-
-        curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -
-        sudo apt-get install nodejs
-        sudo npm install -g gulp-cli
 
 1. Set up directories and files
 
@@ -207,14 +163,16 @@ Python 3.x, nginx, uwsgi and sqlite and should be sufficient for a few users
 
         cd /var/www/babybuddy/public
 
-1. Initiate the Python environment
+1. Initiate and enter the Python environment
 
-        pipenv install --three --dev
-
-1. Build static assets
-
-        npm install
-        gulp build
+        pipenv install --three
+        pipenv shell
+        
+    **Note:** Python dependencies are locked on x86-64 architecture. Installs 
+    on other architectures (like Raspberry Pi's ARM) may result in a 
+    ``THESE PACKAGES DO NOT MATCH THE HASHES FROM Pipfile.lock!`` error. Add 
+    the ``--skip-lock`` flag to the above command to suppress this error 
+    (i.e.: ``pipenv install --three --dev --skip-lock``).
 
 1. Create a production settings file and set the ``SECRET_KEY`` and ``ALLOWED_HOSTS`` values
 
@@ -224,8 +182,7 @@ Python 3.x, nginx, uwsgi and sqlite and should be sufficient for a few users
 1. Initiate the application
 
         export DJANGO_SETTINGS_MODULE=babybuddy.settings.production
-        gulp collectstatic
-        gulp migrate
+        python manage.py migrate
 
 1. Set appropriate permissions on the database and data folder
 
@@ -236,8 +193,6 @@ Python 3.x, nginx, uwsgi and sqlite and should be sufficient for a few users
 1. Create and configure the uwsgi app
 
         sudo editor /etc/uwsgi/apps-available/babybuddy.ini
-        sudo ln -s /etc/uwsgi/apps-available/babybuddy.ini /etc/uwsgi/apps-enabled/babybuddy.ini
-        sudo service uwsgi restart
 
     Example config:
 
@@ -256,14 +211,17 @@ Python 3.x, nginx, uwsgi and sqlite and should be sufficient for a few users
     See the [uWSGI documentation](http://uwsgi-docs.readthedocs.io/en/latest/)
     for more advanced configuration details.
 
-    **Note: Find the location of the pipenv virtual environment for the 
+    **Note: Find the location of the pipenv virtual environment for the
     `virtualenv` parameter with the command `pipenv --venv`.**
+
+1. Symlink config and restart uWSGI:
+
+        sudo ln -s /etc/uwsgi/apps-available/babybuddy.ini /etc/uwsgi/apps-enabled/babybuddy.ini
+        sudo service uwsgi restart
 
 1. Create and configure the nginx server
 
-        sudo vim /etc/nginx/sites-available/babybuddy
-        sudo ln -s /etc/nginx/sites-available/babybuddy /etc/nginx/sites-enabled/babybuddy
-        sudo service nginx restart
+        sudo editor /etc/nginx/sites-available/babybuddy
 
     Example config:
 
@@ -279,10 +237,19 @@ Python 3.x, nginx, uwsgi and sqlite and should be sufficient for a few users
                 uwsgi_pass babybuddy;
                 include uwsgi_params;
             }
+            
+            location /media {
+                alias /var/www/babybuddy/data/media;
+            }
         }
 
     See the [nginx documentation](https://nginx.org/en/docs/) for more advanced
     configuration details.
+
+1. Symlink config and restart NGINX:
+
+        sudo ln -s /etc/nginx/sites-available/babybuddy /etc/nginx/sites-enabled/babybuddy
+        sudo service nginx restart
 
 1. That's it (hopefully)! :tada:
 
@@ -530,7 +497,7 @@ multiple fields).
 
 ### Requirements
 
-- Python 3.4+, pip, pipenv
+- Python 3.5+, pip, pipenv
 - NodeJS 8.x and NPM 5.x
 - Gulp
 
@@ -582,8 +549,8 @@ in the [`babybuddy/management/commands`](babybuddy/management/commands) folder.
 
 - [`gulp`](#gulp)
 - [`gulp build`](#build)
+- [`gulp clean`](#clean)
 - [`gulp collectstatic`](#collectstatic)
-- [`gulp compress`](#compress)
 - [`gulp coverage`](#coverage)
 - [`gulp extras`](#extras)
 - [`gulp fake`](#fake)
@@ -605,19 +572,18 @@ Executes the `build` and `watch` commands and runs Django's development server.
 Creates all script, style and "extra" assets and places them in the
 `babybuddy/static` folder.
 
+#### `clean`
+
+Deletes all build folders and the root `static` folder. Generally this should
+be run before a `gulp build` to remove previous build files and the generated
+static assets.
+
 #### `collectstatic`
 
 Executes Django's `collectstatic` management task. This task relies on files in
 the `babybuddy/static` folder, so generally `gulp build` should be run before
 this command for production deployments. Gulp also passes along
 non-overlapping arguments for this command, e.g. `--no-input`.
-
-#### `compress`
-
-:exclamation: *DEPRECATED* :exclamation:
-
-Compresses built scripts and styles. This command has been deprecated in favor
-of WhiteNoise's compression as part of the `collectstatic` command.
 
 #### `coverage`
 
@@ -678,3 +644,29 @@ Executes Baby Buddy's suite of tests.
 Gulp also passes along non-overlapping arguments for this command, however
 individual tests cannot be run with this command. `python manage.py test` can be
 used for individual test execution.
+
+### Pre-commit Hook
+
+A [pre-commit hook](https://git-scm.com/docs/githooks#_pre_commit) is 
+recommended for all commits in order to make sure that static assets are 
+correctly committed. Here is an example working script for bash:
+
+```
+#!/bin/bash
+
+if [ $(git diff --cached --name-only | grep static_src -c) -ne 0 ]
+then
+    gulp clean && gulp build && gulp collectstatic
+    if [ $? -ne 0 ]; then exit $?; fi
+    git add ./static
+fi
+
+gulp lint && gulp test
+
+exit $?
+```
+
+This script will build and add static assets to the commit only if changes have
+been made to files in a `static_src` directory of the project. It will always
+run the `gulp lint` and `gulp test` commands. If any of these processes result
+in an error, the commit will be rejected.

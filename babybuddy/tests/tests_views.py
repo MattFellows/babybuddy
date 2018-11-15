@@ -6,8 +6,6 @@ from django.core.management import call_command
 
 from faker import Factory
 
-from core.models import Child
-
 
 class ViewsTestCase(TestCase):
     @classmethod
@@ -30,20 +28,6 @@ class ViewsTestCase(TestCase):
 
     def test_root_router(self):
         page = self.c.get('/')
-        self.assertEqual(page.url, '/welcome/')
-
-        call_command('fake', verbosity=0, children=1, days=1)
-        child = Child.objects.first()
-        page = self.c.get('/')
-        self.assertEqual(
-            page.url, '/children/{}/dashboard/'.format(child.slug))
-
-        Child.objects.create(
-            first_name='Second',
-            last_name='Child',
-            birth_date='2000-01-01'
-        )
-        page = self.c.get('/')
         self.assertEqual(page.url, '/dashboard/')
 
     def test_user_reset_api_key(self):
@@ -62,7 +46,7 @@ class ViewsTestCase(TestCase):
     def test_user_views(self):
         # Staff setting is required to access user management.
         page = self.c.get('/users/')
-        self.assertEqual(page.status_code, 302)
+        self.assertEqual(page.status_code, 403)
         self.user.is_staff = True
         self.user.save()
 

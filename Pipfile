@@ -6,12 +6,12 @@ url = "https://pypi.python.org/simple"
 
 [packages]
 
-django = "*"
+django = ">2.1.1"
 djangorestframework = "*"
 django-filter = "*"
 django-widget-tweaks = "*"
 plotly = "*"
-pandas = "<0.22.0"
+pandas = "*"
 faker = "*"
 dj-database-url = "*"
 gunicorn = "*"
